@@ -1,35 +1,10 @@
 ﻿IF OBJECT_ID(N'[data].[sys_dataset]') IS NOT NULL
 BEGIN
 
-IF OBJECT_ID(N'tempdb..#COLUMNS') IS NOT NULL
-BEGIN
-	DROP TABLE #COLUMNS
-END
-
-IF OBJECT_ID(N'tempdb..#TABLES') IS NOT NULL
-BEGIN
-	DROP TABLE #TABLES
-END
-
-IF OBJECT_ID(N'tempdb..#TXTTABLES') IS NOT NULL
-BEGIN
-	DROP TABLE #TXTTABLES
-END
-
-IF OBJECT_ID(N'tempdb..#VARTABLES') IS NOT NULL
-BEGIN
-	DROP TABLE #VARTABLES
-END
+IF OBJECT_ID(N'tempdb..#COLUMNS') IS NOT NULL DROP TABLE #COLUMNS
 
 CREATE TABLE #COLUMNS(ColumnName NVARCHAR(500));
-INSERT INTO #COLUMNS VALUES	('sys_createdOn'),
-	('sys_started'),
-	('sys_updated'),
-	('sys_schedulerStartDate'),
-	('sys_schedulerEndDate'),
-	('sys_completedDate'),
-	('sys_personalLinkExpiryDate'),
-	('sys_lastEditedDate')
+INSERT INTO #COLUMNS VALUES	('sys_createdOn'),('sys_started'),('sys_updated'),('sys_schedulerStartDate'),('sys_schedulerEndDate'),('sys_completedDate'),('sys_personalLinkExpiryDate'),('sys_lastEditedDate')
 
 DECLARE @VariableType NVARCHAR(10) = 3
 
@@ -71,19 +46,10 @@ WHILE (@@FETCH_STATUS = 0)
 			SET @TxtTableName  = @TableName + CONVERT(NVARCHAR, @Counter) + '_TXT';
 			SET @NumTable = @Table + CONVERT(NVARCHAR, @Counter) + '_NUM]';
 			SET @NumTableName  = @TableName + CONVERT(NVARCHAR, @Counter) + '_NUM';
-			IF OBJECT_ID(N'tempdb..#TXT_EXISTING_COLUMNS') IS NOT NULL
-				BEGIN
-					DROP TABLE #TXT_EXISTING_COLUMNS
-				END
 
-			IF OBJECT_ID(N'tempdb..#NUM_EXISTING_COLUMNS') IS NOT NULL
-				BEGIN
-					DROP TABLE #NUM_EXISTING_COLUMNS
-				END
-			IF OBJECT_ID(N'tempdb..#COLUMNS_TO_UPDATE') IS NOT NULL
-				BEGIN
-					DROP TABLE #COLUMNS_TO_UPDATE
-				END
+			IF OBJECT_ID(N'tempdb..#TXT_EXISTING_COLUMNS') IS NOT NULL DROP TABLE #TXT_EXISTING_COLUMNS
+			IF OBJECT_ID(N'tempdb..#NUM_EXISTING_COLUMNS') IS NOT NULL DROP TABLE #NUM_EXISTING_COLUMNS
+			IF OBJECT_ID(N'tempdb..#COLUMNS_TO_UPDATE') IS NOT NULL DROP TABLE #COLUMNS_TO_UPDATE
 
 			SELECT * INTO #TXT_EXISTING_COLUMNS FROM (SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @TxtTableName AND COLUMN_NAME IN (SELECT ColumnName FROM #COLUMNS)) AS T2
 			SELECT * INTO #NUM_EXISTING_COLUMNS FROM (SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @NumTableName AND COLUMN_NAME IN (SELECT ColumnName FROM #COLUMNS)) AS T2
@@ -94,33 +60,30 @@ WHILE (@@FETCH_STATUS = 0)
 					--SELECT * FROM #COLUMNS_TO_UPDATE;
 					IF EXISTS(SELECT TOP 1 * FROM #COLUMNS_TO_UPDATE)
 					BEGIN
-						--BEGIN TRY  
-							-- Add Columns to NUM table
-							SELECT @AlterNumTableQuery = STRING_AGG(COLUMN_NAME, ' DATETIME2, ') + ' DATETIME2' FROM #COLUMNS_TO_UPDATE;
-							SET @AlterNumTableQuery = 'ALTER TABLE ' + @NumTable + ' ADD ' + @AlterNumTableQuery;
-							PRINT @AlterNumTableQuery;
-							EXECUTE sp_executesql @AlterNumTableQuery
+						-- Add Columns to NUM table
+						SELECT @AlterNumTableQuery = STRING_AGG(COLUMN_NAME, ' DATETIME2, ') + ' DATETIME2' FROM #COLUMNS_TO_UPDATE;
+						SET @AlterNumTableQuery = 'ALTER TABLE ' + @NumTable + ' ADD ' + @AlterNumTableQuery;
+						PRINT @AlterNumTableQuery;
+						EXECUTE sp_executesql @AlterNumTableQuery
 
-							-- Update Columns in NUM from TXT
-							SELECT @UpdateColumnQuery = STRING_AGG(COLUMN_NAME + ' =  TRY_CONVERT(DATETIME2, T.' + COLUMN_NAME, ', NULL), ')  FROM #COLUMNS_TO_UPDATE;
-							SET @UpdateColumnQuery = 'UPDATE ' + @NumTable + ' SET ' + @UpdateColumnQuery + ') FROM ' + @NumTable + ' N JOIN ' + @TxtTable + ' T ON N.' + @UniqueIdName + ' = T.' + @UniqueIdName + ';';
-							PRINT @UpdateColumnQuery;
-							EXECUTE sp_executesql @UpdateColumnQuery
+						-- Update Columns in NUM from TXT
+						SELECT @UpdateColumnQuery = STRING_AGG(COLUMN_NAME + ' =  TRY_CONVERT(DATETIME2, T.' + COLUMN_NAME, ', NULL), ')  FROM #COLUMNS_TO_UPDATE;
+						SET @UpdateColumnQuery = 'UPDATE ' + @NumTable + ' SET ' + @UpdateColumnQuery + ') FROM ' + @NumTable + ' N JOIN ' + @TxtTable + ' T ON N.' + @UniqueIdName + ' = T.' + @UniqueIdName + ';';
+						PRINT @UpdateColumnQuery;
+						EXECUTE sp_executesql @UpdateColumnQuery
 
-							-- Delete columns in TXT
-							SELECT @DeleteTxtColumnQuery = STRING_AGG(COLUMN_NAME, ', ')  FROM #COLUMNS_TO_UPDATE;
-							SET @DeleteTxtColumnQuery = 'ALTER TABLE ' + @TxtTable + ' DROP COLUMN ' + @DeleteTxtColumnQuery + ';';
-							PRINT @DeleteTxtColumnQuery;
-							EXECUTE sp_executesql @DeleteTxtColumnQuery
-						--END TRY  
-						--BEGIN CATCH  
-							--PRINT 'ERROR IN ----------------------------------------------------------------------';
-						--END CATCH; 
+						-- Delete columns in TXT
+						SELECT @DeleteTxtColumnQuery = STRING_AGG(COLUMN_NAME, ', ')  FROM #COLUMNS_TO_UPDATE;
+						SET @DeleteTxtColumnQuery = 'ALTER TABLE ' + @TxtTable + ' DROP COLUMN ' + @DeleteTxtColumnQuery + ';';
+						PRINT @DeleteTxtColumnQuery;
+						EXECUTE sp_executesql @DeleteTxtColumnQuery
 					END
 				END
-			DROP TABLE #TXT_EXISTING_COLUMNS
-			DROP TABLE #NUM_EXISTING_COLUMNS
+
+			IF OBJECT_ID(N'tempdb..#TXT_EXISTING_COLUMNS') IS NOT NULL DROP TABLE #TXT_EXISTING_COLUMNS
+			IF OBJECT_ID(N'tempdb..#NUM_EXISTING_COLUMNS') IS NOT NULL DROP TABLE #NUM_EXISTING_COLUMNS
 			IF OBJECT_ID(N'tempdb..#COLUMNS_TO_UPDATE') IS NOT NULL DROP TABLE #COLUMNS_TO_UPDATE
+
 		    SET @Counter  = @Counter  + 1
 		END
 
