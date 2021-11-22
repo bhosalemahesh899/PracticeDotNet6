@@ -18,12 +18,6 @@ BEGIN
 	DROP TABLE #VARTABLES
 END
 
---SELECT * INTO #DataSet FROM 
---(
---	SELECT CAST([UniqueId] AS NVARCHAR(10)) AS [UniqueId], [UniqueName], [UniqueIdName], [LastVersion], [LiveVersion] FROM [data].[sys_dataset]
---) AS ABC
---GO
-
 CREATE TABLE #COLUMNS(ColumnName VARCHAR(500));
 INSERT INTO #COLUMNS VALUES	('sys_createdOn'),
 	('sys_started'),
@@ -51,6 +45,8 @@ DECLARE @NumTableName VARCHAR(2000);
 DECLARE @VarTable VARCHAR(2000);
 DECLARE @Query nvarchar(MAX);
 DECLARE @AlterNumTableQuery VARCHAR(MAX);
+DECLARE @UpdateColumnQuery VARCHAR(MAX);
+DECLARE @DeleteTxtColumnQuery VARCHAR(MAX);
 
 FETCH NEXT FROM DataSet_CURSER INTO @UniqueId, @UniqueName, @UniqueIdName, @LastVersion
 WHILE (@@FETCH_STATUS = 0)
@@ -91,13 +87,28 @@ WHILE (@@FETCH_STATUS = 0)
 
 			IF EXISTS (SELECT * FROM #TXT_EXISTING_COLUMNS)
 				BEGIN
-					SELECT @AlterNumTableQuery = STRING_AGG(COLUMN_NAME, ' DATETIME2, ') + ' DATETIME2' FROM #TXT_EXISTING_COLUMNS WHERE COLUMN_NAME NOT IN(SELECT COLUMN_NAME FROM #NUM_EXISTING_COLUMNS);
-					IF LEN(ISNULL(@AlterNumTableQuery,'')) > 0
+					SELECT * INTO #COLUMNS_TO_UPDATE FROM #TXT_EXISTING_COLUMNS WHERE COLUMN_NAME NOT IN(SELECT COLUMN_NAME FROM #NUM_EXISTING_COLUMNS);
+					SELECT * FROM #COLUMNS_TO_UPDATE;
+					IF EXISTS(SELECT TOP 1 * FROM #COLUMNS_TO_UPDATE)
 					BEGIN
+						-- Add Columns to NUM table
+						SELECT @AlterNumTableQuery = STRING_AGG(COLUMN_NAME, ' DATETIME2, ') + ' DATETIME2' FROM #COLUMNS_TO_UPDATE;
 						SET @AlterNumTableQuery = 'ALTER TABLE ' + @NumTable + ' ADD ' + @AlterNumTableQuery;
-						PRINT @AlterNumTableQuery;
+						--PRINT @AlterNumTableQuery;
+						--EXECUTE sp_executesql @AlterNumTableQuery
+
+						-- Update Columns in NUM from TXT
+						SELECT @UpdateColumnQuery = STRING_AGG(COLUMN_NAME + ' =  TRY_CONVERT(DATETIME2, T.' + COLUMN_NAME, '), ')  FROM #COLUMNS_TO_UPDATE;
+						SET @UpdateColumnQuery = 'UPDATE ' + @NumTable + ' SET ' + @UpdateColumnQuery + ') FROM ' + @NumTable + ' N JOIN ' + @TxtTable + ' T ON N.' + @UniqueIdName + ' = T.' + @UniqueIdName + ';';
+						--PRINT @UpdateColumnQuery;
+						--EXECUTE sp_executesql @UpdateColumnQuery --Update Columns
+
+						-- Delete columns in TXT
+						SELECT @DeleteTxtColumnQuery = STRING_AGG(COLUMN_NAME, ', ')  FROM #COLUMNS_TO_UPDATE;
+						SET @DeleteTxtColumnQuery = 'ALTER TABLE ' + @TxtTable + ' DROP COLUMN ' + @DeleteTxtColumnQuery + ';';
+						PRINT @DeleteTxtColumnQuery;
+						--EXECUTE sp_executesql @UpdateColumnQuery --Update Columns
 					END
-					--EXECUTE sp_executesql @@AlterNumTableQuery --Add Columns
 				END
 			DROP TABLE #TXT_EXISTING_COLUMNS
 			DROP TABLE #NUM_EXISTING_COLUMNS

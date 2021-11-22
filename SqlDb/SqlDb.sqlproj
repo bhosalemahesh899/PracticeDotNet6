@@ -60,6 +60,6 @@
     <None Include="MB_IDEA_303.sql" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Script2.sql" />
+    <None Include="MB_BKP.sql" />
   </ItemGroup>
 </Project>
