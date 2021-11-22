@@ -61,5 +61,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="MB_BKP.sql" />
+    <None Include="MB_Test303.sql" />
   </ItemGroup>
 </Project>
