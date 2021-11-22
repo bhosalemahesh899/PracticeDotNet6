@@ -1,4 +1,7 @@
-﻿IF OBJECT_ID(N'tempdb..#COLUMNS') IS NOT NULL
+﻿IF OBJECT_ID(N'[data].[sys_dataset]') IS NOT NULL
+BEGIN
+
+IF OBJECT_ID(N'tempdb..#COLUMNS') IS NOT NULL
 BEGIN
 	DROP TABLE #COLUMNS
 END
@@ -102,13 +105,13 @@ WHILE (@@FETCH_STATUS = 0)
 							SELECT @UpdateColumnQuery = STRING_AGG(COLUMN_NAME + ' =  TRY_CONVERT(DATETIME2, T.' + COLUMN_NAME, ', NULL), ')  FROM #COLUMNS_TO_UPDATE;
 							SET @UpdateColumnQuery = 'UPDATE ' + @NumTable + ' SET ' + @UpdateColumnQuery + ') FROM ' + @NumTable + ' N JOIN ' + @TxtTable + ' T ON N.' + @UniqueIdName + ' = T.' + @UniqueIdName + ';';
 							PRINT @UpdateColumnQuery;
-							EXECUTE sp_executesql @UpdateColumnQuery --Update Columns
+							EXECUTE sp_executesql @UpdateColumnQuery
 
 							-- Delete columns in TXT
 							SELECT @DeleteTxtColumnQuery = STRING_AGG(COLUMN_NAME, ', ')  FROM #COLUMNS_TO_UPDATE;
 							SET @DeleteTxtColumnQuery = 'ALTER TABLE ' + @TxtTable + ' DROP COLUMN ' + @DeleteTxtColumnQuery + ';';
 							PRINT @DeleteTxtColumnQuery;
-							EXECUTE sp_executesql @DeleteTxtColumnQuery --Update Columns
+							EXECUTE sp_executesql @DeleteTxtColumnQuery
 						--END TRY  
 						--BEGIN CATCH  
 							--PRINT 'ERROR IN ----------------------------------------------------------------------';
@@ -116,8 +119,8 @@ WHILE (@@FETCH_STATUS = 0)
 					END
 				END
 			DROP TABLE #TXT_EXISTING_COLUMNS
-			DROP TABLE #TXT_EXISTING_COLUMNS
-			DROP TABLE #COLUMNS_TO_UPDATE
+			DROP TABLE #NUM_EXISTING_COLUMNS
+			IF OBJECT_ID(N'tempdb..#COLUMNS_TO_UPDATE') IS NOT NULL DROP TABLE #COLUMNS_TO_UPDATE
 		    SET @Counter  = @Counter  + 1
 		END
 
@@ -127,3 +130,4 @@ CLOSE DataSet_CURSER
 DEALLOCATE DataSet_CURSER
 
 DROP TABLE #COLUMNS
+END
