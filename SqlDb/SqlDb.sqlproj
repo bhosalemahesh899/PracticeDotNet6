@@ -58,6 +58,7 @@
   <ItemGroup>
     <Build Include="Default1.sql" />
     <None Include="MB_IDEA_303.sql" />
+    <None Include="6.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="MB_BKP.sql" />
